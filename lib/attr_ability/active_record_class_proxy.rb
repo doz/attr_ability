@@ -28,7 +28,7 @@ module AttrAbility
     protected
 
     def method_missing(name, *args, &block)
-      @model.send(name, *args, &block)
+      @klass.send(name, *args, &block)
     end
   end
 end

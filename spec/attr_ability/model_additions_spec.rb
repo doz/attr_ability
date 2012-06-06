@@ -4,8 +4,6 @@ describe AttrAbility::ModelAdditions do
   with_model :Article do
     table do |t|
       t.string :title
-      t.integer :author_id
-      t.string :review
       t.integer :system_flags
     end
 
@@ -14,8 +12,7 @@ describe AttrAbility::ModelAdditions do
       has_many :comments
       accepts_nested_attributes_for :tags, :comments
 
-      ability :create, [:title, :author_id]
-      ability :review, [:review, :tags_attributes, :comments_attributes]
+      ability :create, [:title, :tags_attributes, :comments_attributes]
     end
   end
 
@@ -50,45 +47,42 @@ describe AttrAbility::ModelAdditions do
   class TestAbility
     include CanCan::Ability
 
-    def initialize(role)
-      case role
-      when :author
-        can :create, Article, author_id: 42
-      when :admin
-        can :manage, :all
-      end
+    def initialize
+      can :create, Article
+      can :create, Tag
     end
   end
 
-  context "without ability specified" do
-    subject { Article.new }
+  context "without ability" do
+    let(:base) { Article }
+    let(:model) { Article.new }
 
-    [:title, :author_id, :review, :system_flags].each do |attr|
-      it "rejects #{attr} for new record" do
-        Article.new(attr => "123").send(attr).should be_nil
+    [:title, :system_flags].each do |attr|
+      it "protects #{attr} for new record" do
+        base.new(attr => "123").send(attr).should be_nil
       end
 
-      it "rejects #{attr} on create" do
-        Article.create(attr => "123").send(attr).should be_nil
+      it "protects #{attr} on create" do
+        base.create(attr => "123").send(attr).should be_nil
       end
 
-      it "rejects #{attr} on update" do
-        subject.update_attributes(attr => "123")
-        subject.send(attr).should be_nil
+      it "protects #{attr} on update" do
+        model.update_attributes(attr => "123")
+        model.send(attr).should be_nil
       end
     end
 
-    it "rejects tags for new record" do
-      Article.new(tags_attributes: [{title: "Tag 1"}]).tags.should be_empty
+    it "protects tags for new record" do
+      base.new(tags_attributes: [{title: "Tag 1"}]).tags.should be_empty
     end
 
-    it "rejects tags on create" do
-      Article.create(tags_attributes: [{title: "Tag 1"}]).tags.should be_empty
+    it "protects tags on create" do
+      base.create(tags_attributes: [{title: "Tag 1"}]).tags.should be_empty
     end
 
-    it "rejects tags on update" do
-      subject.update_attributes(tags_attributes: [{title: "Tag 1"}])
-      subject.tags.should be_empty
+    it "protects tags on update" do
+      model.update_attributes(tags_attributes: [{title: "Tag 1"}])
+      model.tags.should be_empty
     end
 
     it "uses attr_accessible if no abilities defined" do
@@ -98,108 +92,58 @@ describe AttrAbility::ModelAdditions do
     end
   end
 
-  context "as system" do
-    subject { Article.new.as_system }
+  context "with ability" do
+    let(:ability) { TestAbility.new }
+    let(:base) { Article.as(ability) }
+    let(:model) { Article.new.as(ability) }
 
-    [:title, :author_id, :review, :system_flags].each do |attr|
-      it "allows to set #{attr} to new record" do
-        Article.as_system.new(attr => "123").send(attr).to_s.should == "123"
-      end
-
-      it "allows to set #{attr} on create" do
-        Article.as_system.create(attr => "123").send(attr).to_s.should == "123"
-      end
-
-      it "allows update of #{attr}" do
-        subject.update_attributes(attr => "123")
-        subject.send(attr).to_s.should == "123"
-      end
+    it "allows title for new record" do
+      base.new(title: "new title").title.should == "new title"
     end
 
-    it "allows to create nested tags with system flags" do
-      article = Article.as_system.new(tags_attributes: [{title: "Tag 1", system_flags: 44}])
-      article.tags.map { |t| [t.title, t.system_flags] }.should == [["Tag 1", 44]]
+    it "allows title on create" do
+      base.create(title: "new title").title.should == "new title"
     end
 
-    it "allows to update existing tag system flags" do
+    it "allows title on update" do
+      model.update_attributes(title: "new title")
+      model.title.should == "new title"
+    end
+
+    it "allows tags for new record" do
+      base.new(tags_attributes: [{title: "Tag 1"}]).tags.map(&:title).should == ["Tag 1"]
+    end
+
+    it "allows tags on create" do
+      base.create(tags_attributes: [{title: "Tag 1"}]).tags.map(&:title).should == ["Tag 1"]
+    end
+
+    it "allows tags on update" do
+      model.update_attributes(tags_attributes: [{title: "Tag 1"}])
+      model.tags.map(&:title).should == ["Tag 1"]
+    end
+
+    it "allows existing tag title update" do
       tag = Tag.as_system.create(title: "Tag 1")
-      Article.as_system.create(tags_attributes: [{id: tag.id, title: "Tag 2", system_flags: 44}])
-      tag.reload.title.should == "Tag 2"
-      tag.reload.system_flags.should == 44
-    end
-
-    it "ignores attr_accessible" do
-      comment = Comment.as_system.new(title: "Title", system_flags: 777)
-      comment.title.should == "Title"
-      comment.system_flags.should == 777
-    end
-
-    it "ignores attr_accessible for nested model" do
-      article = Article.as_system.new(comments_attributes: [{title: "Comment 1", system_flags: 44}])
-      article.comments.map { |t| [t.title, t.system_flags] }.should == [["Comment 1", 44]]
-    end
-  end
-
-  context "as admin" do
-    let(:ability) { TestAbility.new(:admin) }
-    subject { Article.new.as(ability) }
-
-    [:title, :author_id, :review].each do |attr|
-      it "allows to set #{attr} to new record" do
-        Article.as(ability).new(attr => "123").send(attr).to_s.should == "123"
-      end
-
-      it "allows to set #{attr} on create" do
-        Article.as(ability).create(attr => "123").send(attr).to_s.should == "123"
-      end
-
-      it "allows update of #{attr}" do
-        subject.update_attributes(attr => "123")
-        subject.send(attr).to_s.should == "123"
-      end
-    end
-
-    it "allows to set tags for new record" do
-      Article.as(ability).new(tags_attributes: [{title: "Tag 1"}]).tags.map(&:title).should == ["Tag 1"]
-    end
-
-    it "allows to set tags on create" do
-      Article.as(ability).create(tags_attributes: [{title: "Tag 1"}]).tags.map(&:title).should == ["Tag 1"]
-    end
-
-    it "allows update of tags" do
-      subject.update_attributes(tags_attributes: [{title: "Tag 1"}])
-      subject.tags.map(&:title).should == ["Tag 1"]
-    end
-
-    it "allows to update existing tag title" do
-      tag = Tag.as_system.create(title: "Tag 1")
-      Article.as(ability).create(tags_attributes: [{id: tag.id, title: "Tag 2"}])
+      base.create(tags_attributes: [{id: tag.id, title: "Tag 2"}])
       tag.reload.title.should == "Tag 2"
     end
 
-    it "rejects tag system flags" do
-      Article.as(ability).new(tags_attributes: [{title: "Tag 1", system_flags: 33}]).tags.map(&:system_flags).should == [nil]
+    it "protects tag system flags" do
+      base.new(tags_attributes: [{title: "Tag 1", system_flags: 33}]).tags.map(&:system_flags).should == [nil]
     end
 
-    it "rejects system_flags for new record" do
-      Article.as(ability).new(system_flags: 1).system_flags.should be_nil
+    it "protects system_flags for new record" do
+      base.new(system_flags: 1).system_flags.should be_nil
     end
 
-    it "rejects system_flags on create" do
-      Article.as(ability).create(system_flags: 1).system_flags.should be_nil
+    it "protects system_flags on create" do
+      base.create(system_flags: 1).system_flags.should be_nil
     end
 
-    it "rejects system_flags on update" do
-      subject.update_attributes(system_flags: 1)
-      subject.system_flags.should be_nil
-    end
-
-    it "doesn't modify original object" do
-      article = Article.new
-      article.as(ability).update_attributes(title: "Admin Title")
-      article.update_attributes(title: "Unauthorized Title")
-      article.title.should == "Admin Title"
+    it "protects system_flags on update" do
+      model.update_attributes(system_flags: 1)
+      model.system_flags.should be_nil
     end
 
     it "uses attr_accessible if no abilities defined" do
@@ -209,64 +153,51 @@ describe AttrAbility::ModelAdditions do
     end
 
     it "users attr_accessible for nested model if no abilities defined" do
-      article = Article.as(ability).new(comments_attributes: [{title: "Comment 1", system_flags: 44}])
+      article = base.new(comments_attributes: [{title: "Comment 1", system_flags: 44}])
       article.comments.map { |t| [t.title, t.system_flags] }.should == [["Comment 1", nil]]
     end
   end
 
-  context "as author" do
-    let(:ability) { TestAbility.new(:author) }
+  context "as system" do
+    let(:base) { Article.as_system }
+    let(:model) { Article.new.as_system }
 
-    it "allows to set authorized author to new record" do
-      Article.as(ability).new(author_id: 42).author_id.should == 42
-    end
-
-    it "allows to set title to new record with authorized author" do
-      Article.as(ability).new(author_id: 42, title: "The Title").title.should == "The Title"
-    end
-
-    it "rejects system_flags for new record with authorized author" do
-      Article.as(ability).new(author_id: 42, system_flags: 1).system_flags.should be_nil
-    end
-
-    it "rejects invalid author for new record" do
-      Article.as(ability).new(author_id: 43).author_id.should be_nil
-    end
-
-    it "rejects invalid author on create" do
-      Article.as(ability).create(author_id: 43).author_id.should be_nil
-    end
-
-    it "rejects tags for new record" do
-      Article.as(ability).new(tags_attributes: [{title: "Tag 1"}]).tags.should be_empty
-    end
-
-    it "rejects tags on create" do
-      Article.as(ability).create(tags_attributes: [{title: "Tag 1"}]).tags.should be_empty
-    end
-
-    context "with authorized article" do
-      subject { Article.as_system.new(author_id: 42).as(ability) }
-
-      it "allows update of title" do
-        subject.update_attributes(title: "New Title")
-        subject.title.should == "New Title"
+    [:title, :system_flags].each do |attr|
+      it "allows #{attr} for new record" do
+        base.new(attr => "123").send(attr).to_s.should == "123"
       end
 
-      it "rejects author change" do
-        subject.update_attributes(author_id: 43)
-        subject.author_id.should == 42
+      it "allows to set #{attr} on create" do
+        base.create(attr => "123").send(attr).to_s.should == "123"
       end
 
-      it "rejects system_flags on update" do
-        subject.update_attributes(system_flags: 1)
-        subject.system_flags.should be_nil
+      it "allows #{attr} on update" do
+        model.update_attributes(attr => "123")
+        model.send(attr).to_s.should == "123"
       end
+    end
 
-      it "rejects tags on update" do
-        subject.update_attributes(tags_attributes: [{title: "Tag 1"}])
-        subject.tags.should be_empty
-      end
+    it "allows tag with system flags on create" do
+      article = base.new(tags_attributes: [{title: "Tag 1", system_flags: 44}])
+      article.tags.map { |t| [t.title, t.system_flags] }.should == [["Tag 1", 44]]
+    end
+
+    it "allows existing tag title and system_flags update" do
+      tag = Tag.as_system.create(title: "Tag 1")
+      base.create(tags_attributes: [{id: tag.id, title: "Tag 2", system_flags: 44}])
+      tag.reload.title.should == "Tag 2"
+      tag.reload.system_flags.should == 44
+    end
+
+    it "overrides attr_accessible" do
+      comment = Comment.as_system.new(title: "Title", system_flags: 777)
+      comment.title.should == "Title"
+      comment.system_flags.should == 777
+    end
+
+    it "overrides attr_accessible for nested model" do
+      article = base.new(comments_attributes: [{title: "Comment 1", system_flags: 44}])
+      article.comments.map { |t| [t.title, t.system_flags] }.should == [["Comment 1", 44]]
     end
   end
 end

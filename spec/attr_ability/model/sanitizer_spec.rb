@@ -1,7 +1,7 @@
 require 'spec_helper'
 
 describe AttrAbility::Model::Sanitizer do
-  with_model :Article do
+  with_model :Post do
     table do |t|
       t.string :title
       t.integer :author_id
@@ -18,24 +18,24 @@ describe AttrAbility::Model::Sanitizer do
     end
   end
 
-  class TestAbility
+  class SanitizerTestAbility
     include CanCan::Ability
 
     def initialize(role)
       case role
       when :author
-        can :create, Article, author_id: 42
+        can :create, Post, author_id: 42
       when :admin
         can :manage, :all
       end
     end
   end
 
-  subject { AttrAbility::Model::Sanitizer.new(TestAbility.new(role)) }
+  subject { AttrAbility::Model::Sanitizer.new(SanitizerTestAbility.new(role)) }
 
   context "with admin ability" do
     let(:role) { :admin }
-    let(:article) { Article.new }
+    let(:article) { Post.new }
 
     %w(title author_id review).each do |attr|
       it "allows #{attr}" do
@@ -53,7 +53,7 @@ describe AttrAbility::Model::Sanitizer do
     let(:role) { :author }
 
     context "for authorized article" do
-      let(:article) { Article.new { |article| article.author_id = 42 } }
+      let(:article) { Post.new { |article| article.author_id = 42 } }
 
       it "allows title" do
         attrs = {"title" => "author title"}
@@ -74,7 +74,7 @@ describe AttrAbility::Model::Sanitizer do
     end
 
     context "for empty article" do
-      let(:article) { Article.new }
+      let(:article) { Post.new }
 
       it "protects all attributes if author_id is not set" do
         subject.sanitize(article, "title" => "new title").should == {}

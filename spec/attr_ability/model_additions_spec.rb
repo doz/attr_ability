@@ -66,6 +66,10 @@ describe AttrAbility::ModelAdditions do
         base.create(attr => "123").send(attr).should be_nil
       end
 
+      it "protects #{attr} on create!" do
+        base.create!(attr => "123").send(attr).should be_nil
+      end
+
       it "protects #{attr} on update" do
         model.update_attributes(attr => "123")
         model.send(attr).should be_nil
@@ -78,6 +82,10 @@ describe AttrAbility::ModelAdditions do
 
     it "protects tags on create" do
       base.create(tags_attributes: [{title: "Tag 1"}]).tags.should be_empty
+    end
+
+    it "protects tags on create!" do
+      base.create!(tags_attributes: [{title: "Tag 1"}]).tags.should be_empty
     end
 
     it "protects tags on update" do
@@ -105,6 +113,10 @@ describe AttrAbility::ModelAdditions do
       base.create(title: "new title").title.should == "new title"
     end
 
+    it "allows title on create!" do
+      base.create!(title: "new title").title.should == "new title"
+    end
+
     it "allows title on update" do
       model.update_attributes(title: "new title")
       model.title.should == "new title"
@@ -118,13 +130,17 @@ describe AttrAbility::ModelAdditions do
       base.create(tags_attributes: [{title: "Tag 1"}]).tags.map(&:title).should == ["Tag 1"]
     end
 
+    it "allows tags on create!" do
+      base.create!(tags_attributes: [{title: "Tag 1"}]).tags.map(&:title).should == ["Tag 1"]
+    end
+
     it "allows tags on update" do
       model.update_attributes(tags_attributes: [{title: "Tag 1"}])
       model.tags.map(&:title).should == ["Tag 1"]
     end
 
     it "allows existing tag title update" do
-      tag = Tag.as_system.create(title: "Tag 1")
+      tag = Tag.as_system.create!(title: "Tag 1")
       base.create(tags_attributes: [{id: tag.id, title: "Tag 2"}])
       tag.reload.title.should == "Tag 2"
     end
@@ -139,6 +155,10 @@ describe AttrAbility::ModelAdditions do
 
     it "protects system_flags on create" do
       base.create(system_flags: 1).system_flags.should be_nil
+    end
+
+    it "protects system_flags on create!" do
+      base.create!(system_flags: 1).system_flags.should be_nil
     end
 
     it "protects system_flags on update" do
@@ -171,6 +191,10 @@ describe AttrAbility::ModelAdditions do
         base.create(attr => "123").send(attr).to_s.should == "123"
       end
 
+      it "allows to set #{attr} on create!" do
+        base.create!(attr => "123").send(attr).to_s.should == "123"
+      end
+
       it "allows #{attr} on update" do
         model.update_attributes(attr => "123")
         model.send(attr).to_s.should == "123"
@@ -183,7 +207,7 @@ describe AttrAbility::ModelAdditions do
     end
 
     it "allows existing tag title and system_flags update" do
-      tag = Tag.as_system.create(title: "Tag 1")
+      tag = Tag.as_system.create!(title: "Tag 1")
       base.create(tags_attributes: [{id: tag.id, title: "Tag 2", system_flags: 44}])
       tag.reload.title.should == "Tag 2"
       tag.reload.system_flags.should == 44

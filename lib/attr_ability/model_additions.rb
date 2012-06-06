@@ -22,9 +22,14 @@ module AttrAbility
 
         def sanitize_for_mass_assignment(attributes, role = :default)
           sanitizer = mass_assignment_options[:sanitizer]
-          if self.class.attribute_abilities || sanitizer.is_a?(AttrAbility::Model::SystemSanitizer)
+          if sanitizer == :system
+            # System access - do not filter anything regardless of protection in use
+            attributes
+          elsif self.class.attribute_abilities
+            # At least one ability is defined for the model - sanitize with AttrAbility
             sanitizer ? sanitizer.sanitize(self, attributes) : {}
           else
+            # No abilities defined - failback to attr_accessible
             original_sanitize_for_mass_assignment(attributes, role)
           end
         end
@@ -41,10 +46,8 @@ module AttrAbility
       end
 
       def build_sanitizer(ability)
-        if ability.is_a?(AttrAbility::Model::Sanitizer)
+        if ability.is_a?(AttrAbility::Model::Sanitizer) || ability == :system
           ability
-        elsif ability == :system
-          AttrAbility::Model::SystemSanitizer.new
         else
           AttrAbility::Model::Sanitizer.new(ability)
         end
@@ -53,7 +56,7 @@ module AttrAbility
       protected
 
       def ability(action, attributes)
-        (self.attribute_abilities ||= {})[action] = attributes.map(&:to_s)
+        (self.attribute_abilities ||= {})[action] = attributes
       end
     end
 

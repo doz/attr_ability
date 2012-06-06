@@ -8,21 +8,28 @@ module AttrAbility
       def sanitize(model, new_attributes)
         return {} unless @ability && new_attributes.present?
         attributes = new_attributes.stringify_keys
-        sample = model.class.new
-        sample.assign_attributes(model.attributes.merge(attributes), without_protection: true)
-        authorized_attributes = model.class.attribute_abilities
-          .map { |action, attributes| attributes if @ability.can?(action, sample) }
-          .compact.flatten.uniq
-        attributes.select { |attribute, value| authorized_attributes.include?(attribute) }
-      end
-    end
-
-    class SystemSanitizer < Sanitizer
-      def initialize
+        authorized_attributes = authorized_attributes_for(model.class.new(model.attributes.merge(attributes), without_protection: true))
+        attributes.select do |attribute, value|
+          authorized_attributes[attribute] == true || authorized_attributes[attribute].include?(value)
+        end
       end
 
-      def sanitize(model, attributes)
-        return attributes
+      def authorized_attributes_for(model)
+        Hash.new([]).tap do |authorized_attributes|
+          model.class.attribute_abilities
+            .map { |action, attributes| attributes if @ability.can?(action, model) }
+            .compact.flatten.each do |attribute_or_hash|
+              if attribute_or_hash.is_a?(Hash)
+                attribute_or_hash.each do |attribute, values|
+                  if authorized_attributes[attribute] != true
+                    authorized_attributes[attribute.to_s] += Array(values)
+                  end
+                end
+              else
+                authorized_attributes[attribute_or_hash.to_s] = true
+              end
+            end
+        end
       end
     end
   end

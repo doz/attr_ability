@@ -5,16 +5,15 @@ describe AttrAbility::Model::Sanitizer do
     table do |t|
       t.string :title
       t.integer :author_id
+      t.string :status
+      t.boolean :important
       t.string :review
       t.integer :system_flags
     end
 
     model do
-      has_many :tags
-      has_many :comments
-
       ability :create, [:title, :author_id]
-      ability :review, [:review]
+      ability :review, [:review, :status => %w(approved rejected), :important => true]
     end
   end
 
@@ -44,6 +43,26 @@ describe AttrAbility::Model::Sanitizer do
       end
     end
 
+    it "allows status = approved" do
+      attrs = {"status" => "approved"}
+      subject.sanitize(article, attrs).should == attrs
+    end
+
+    it "allows status = rejected" do
+      attrs = {"status" => "rejected"}
+      subject.sanitize(article, attrs).should == attrs
+    end
+
+    it "protects status = deleted" do
+      attrs = {"status" => "deleted"}
+      subject.sanitize(article, attrs).should == {}
+    end
+
+    it "allows important = true" do
+      attrs = {"important" => true}
+      subject.sanitize(article, attrs).should == attrs
+    end
+
     it "protects system_flags" do
       subject.sanitize(article, "system_flags" => "777").should == {}
     end
@@ -60,12 +79,10 @@ describe AttrAbility::Model::Sanitizer do
         subject.sanitize(article, attrs).should == attrs
       end
 
-      it "protects review" do
-        subject.sanitize(article, "review" => "review").should == {}
-      end
-
-      it "protects system_flags" do
-        subject.sanitize(article, "system_flags" => "777").should == {}
+      %w{review system_flags status}.each do |attr|
+        it "protects #{attr}" do
+          subject.sanitize(article, attr => "777").should == {}
+        end
       end
 
       it "protects all atributes on author_id change" do
@@ -94,12 +111,10 @@ describe AttrAbility::Model::Sanitizer do
         subject.sanitize(article, attrs).should == attrs
       end
 
-      it "protects review even with valid author_id" do
-        subject.sanitize(article, "author_id" => 42, "review" => "review").should == {"author_id" => 42}
-      end
-
-      it "protects system_flags even with valid author_id" do
-        subject.sanitize(article, "author_id" => 42, "system_flags" => "777").should == {"author_id" => 42}
+      %w{review system_flags status}.each do |attr|
+        it "protects #{attr} even with valid author_id" do
+          subject.sanitize(article, "author_id" => 42, attr => "777").should == {"author_id" => 42}
+        end
       end
     end
   end

@@ -1,9 +1,9 @@
-require "attr_ability/active_record_instance_proxy"
-require "attr_ability/active_record_class_proxy"
-require "attr_ability/sanitizer"
+require "attr_ability/model/instance_proxy"
+require "attr_ability/model/class_proxy"
+require "attr_ability/model/sanitizer"
 
 module AttrAbility
-  module ActiveRecord
+  module ModelAdditions
     def self.included(base)
       base.class_eval do
         class_attribute :attribute_abilities
@@ -22,7 +22,7 @@ module AttrAbility
 
         def sanitize_for_mass_assignment(attributes, role = :default)
           sanitizer = mass_assignment_options[:sanitizer]
-          if self.class.attribute_abilities || sanitizer.is_a?(AttrAbility::SystemSanitizer)
+          if self.class.attribute_abilities || sanitizer.is_a?(AttrAbility::Model::SystemSanitizer)
             sanitizer ? sanitizer.sanitize(self, attributes) : {}
           else
             original_sanitize_for_mass_assignment(attributes, role)
@@ -33,7 +33,7 @@ module AttrAbility
 
     module ClassMethods
       def as(ability)
-        ActiveRecordClassProxy.new(self, build_sanitizer(ability))
+        AttrAbility::Model::ClassProxy.new(self, build_sanitizer(ability))
       end
 
       def as_system
@@ -41,12 +41,12 @@ module AttrAbility
       end
 
       def build_sanitizer(ability)
-        if ability.is_a?(AttrAbility::Sanitizer)
+        if ability.is_a?(AttrAbility::Model::Sanitizer)
           ability
         elsif ability == :system
-          AttrAbility::SystemSanitizer.new
+          AttrAbility::Model::SystemSanitizer.new
         else
-          AttrAbility::Sanitizer.new(ability)
+          AttrAbility::Model::Sanitizer.new(ability)
         end
       end
 
@@ -58,7 +58,7 @@ module AttrAbility
     end
 
     def as(ability)
-      ActiveRecordInstanceProxy.new(self, self.class.build_sanitizer(ability))
+      AttrAbility::Model::InstanceProxy.new(self, self.class.build_sanitizer(ability))
     end
 
     def as_system

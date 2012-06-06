@@ -1,9 +1,6 @@
 require 'spec_helper'
-require 'attr_ability/active_record'
 
-ActiveRecord::Base.establish_connection(adapter: "sqlite3", database: ":memory:")
-
-describe AttrAbility do
+describe AttrAbility::ModelAdditions do
   with_model :Article do
     table do |t|
       t.string :title
@@ -13,8 +10,6 @@ describe AttrAbility do
     end
 
     model do
-      include AttrAbility::ActiveRecord
-
       has_many :tags
       has_many :comments
       accepts_nested_attributes_for :tags, :comments
@@ -32,8 +27,6 @@ describe AttrAbility do
     end
 
     model do
-      include AttrAbility::ActiveRecord
-
       belongs_to :article
 
       ability :create, [:title]
@@ -48,8 +41,6 @@ describe AttrAbility do
     end
 
     model do
-      include AttrAbility::ActiveRecord
-
       belongs_to :article
 
       attr_accessible :title

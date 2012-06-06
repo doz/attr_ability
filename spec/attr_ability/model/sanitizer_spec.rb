@@ -13,7 +13,7 @@ describe AttrAbility::Model::Sanitizer do
 
     model do
       ability :create, [:title, :author_id]
-      ability :review, [:review, :status => %w(approved rejected), :important => true]
+      ability :review, [:review, :status => [:approved, :rejected], :important => true]
     end
   end
 

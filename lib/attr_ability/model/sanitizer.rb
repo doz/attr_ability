@@ -10,7 +10,7 @@ module AttrAbility
         attributes = new_attributes.stringify_keys
         authorized_attributes = authorized_attributes_for(model.class.new(model.attributes.merge(attributes), without_protection: true))
         attributes.select do |attribute, value|
-          authorized_attributes[attribute] == true || authorized_attributes[attribute].include?(value)
+          authorized_attributes[attribute] == true || authorized_attributes[attribute].include?(value.to_s)
         end
       end
 
@@ -22,7 +22,7 @@ module AttrAbility
               if attribute_or_hash.is_a?(Hash)
                 attribute_or_hash.each do |attribute, values|
                   if authorized_attributes[attribute] != true
-                    authorized_attributes[attribute.to_s] += Array(values)
+                    authorized_attributes[attribute.to_s] += Array(values).map(&:to_s)
                   end
                 end
               else

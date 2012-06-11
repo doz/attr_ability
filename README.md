@@ -10,7 +10,7 @@ Ideas behind the project:
 * CanCan is de facto standard for authorization, no reason to invent new format for defining abilities.
 * Everything which is not explicitly allowed is forbidden.
 * There must be easy way to gain full access to model (e.g. from console or seeds).
-* Model must not know nothing about user roles that have access to it.
+* Model must know nothing about user roles that have access to it.
 
 ## Installation
 

@@ -14,6 +14,23 @@ describe AttrAbility::Model::Sanitizer do
     model do
       ability :create, [:title, :author_id]
       ability :review, [:review, :status => [:approved, :rejected], :important => true]
+
+      def self.statuses
+        [:pending, :approved, :rejected, :deleted]
+      end
+
+      def status
+        self[:status] && self.class.statuses[self[:status]]
+      end
+
+      def status=(val)
+        if val.nil?
+          self[:status] = nil
+        else
+          raise "invalid status" unless index = self.class.statuses.index(val.to_sym)
+          self[:status] = index
+        end
+      end
     end
   end
 
@@ -66,6 +83,11 @@ describe AttrAbility::Model::Sanitizer do
     it "protects system_flags" do
       subject.sanitize(article, "system_flags" => "777").should == {}
     end
+
+    it "protects system_flags when status is set" do
+      article.status = :rejected
+      subject.sanitize(article, "system_flags" => "777").should == {}
+    end
   end
 
   context "with author ability" do
@@ -79,9 +101,9 @@ describe AttrAbility::Model::Sanitizer do
         subject.sanitize(article, attrs).should == attrs
       end
 
-      %w{review system_flags status}.each do |attr|
+      {"review" => "review", "system_flags" => 777, "status" => "deleted"}.each do |attr, value|
         it "protects #{attr}" do
-          subject.sanitize(article, attr => "777").should == {}
+          subject.sanitize(article, attr => value).should == {}
         end
       end
 
@@ -111,9 +133,9 @@ describe AttrAbility::Model::Sanitizer do
         subject.sanitize(article, attrs).should == attrs
       end
 
-      %w{review system_flags status}.each do |attr|
+      {"review" => "review", "system_flags" => 777, "status" => "deleted"}.each do |attr, value|
         it "protects #{attr} even with valid author_id" do
-          subject.sanitize(article, "author_id" => 42, attr => "777").should == {"author_id" => 42}
+          subject.sanitize(article, "author_id" => 42, attr => value).should == {"author_id" => 42}
         end
       end
     end

@@ -8,10 +8,11 @@ module AttrAbility
       def sanitize(model, new_attributes)
         return {} unless @ability && new_attributes.present?
         attributes = new_attributes.stringify_keys
-        temp_model = model.class.new(attributes, without_protection: true)
+        temp_model = model.class.new
         model.attributes.each do |attr, value|
           temp_model[attr] = value unless attributes.include?(attr)
         end
+        temp_model.assign_attributes(attributes, without_protection: true)
         authorized_attributes = authorized_attributes_for(temp_model)
         attributes.select do |attribute, value|
           authorized_attributes[attribute] == true || authorized_attributes[attribute].include?(value.to_s)

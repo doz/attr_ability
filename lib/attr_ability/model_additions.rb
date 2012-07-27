@@ -1,3 +1,4 @@
+require "attr_ability/attributes"
 require "attr_ability/model/instance_proxy"
 require "attr_ability/model/class_proxy"
 require "attr_ability/model/sanitizer"
@@ -56,7 +57,7 @@ module AttrAbility
       protected
 
       def ability(action, attributes)
-        (self.attribute_abilities ||= {})[action] = attributes
+        ((self.attribute_abilities ||= {})[action] ||= AttrAbility::Attributes.new).add(attributes)
       end
     end
 

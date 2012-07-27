@@ -12,7 +12,8 @@ describe AttrAbility::ModelAdditions do
       has_many :comments
       accepts_nested_attributes_for :tags, :comments
 
-      ability :create, [:title, :tags_attributes, :comments_attributes]
+      ability :create, [:title]
+      ability :create, [:tags_attributes, :comments_attributes]
     end
   end
 

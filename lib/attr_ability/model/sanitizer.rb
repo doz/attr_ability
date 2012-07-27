@@ -1,3 +1,5 @@
+require "attr_ability/attributes"
+
 module AttrAbility
   module Model
     class Sanitizer
@@ -14,27 +16,15 @@ module AttrAbility
         end
         temp_model.assign_attributes(attributes, without_protection: true)
         authorized_attributes = authorized_attributes_for(temp_model)
-        attributes.select do |attribute, value|
-          authorized_attributes[attribute] == true || authorized_attributes[attribute].include?(value.to_s)
-        end
+        attributes.select { |attribute, value| authorized_attributes.allow?(attribute, value) }
       end
 
       def authorized_attributes_for(model)
-        Hash.new([]).tap do |authorized_attributes|
-          model.class.attribute_abilities
-            .map { |action, attributes| attributes if @ability.can?(action, model) }
-            .compact.flatten.each do |attribute_or_hash|
-              if attribute_or_hash.is_a?(Hash)
-                attribute_or_hash.each do |attribute, values|
-                  if authorized_attributes[attribute] != true
-                    authorized_attributes[attribute.to_s] += Array(values).map(&:to_s)
-                  end
-                end
-              else
-                authorized_attributes[attribute_or_hash.to_s] = true
-              end
-            end
+        authorized_attributes = AttrAbility::Attributes.new
+        model.class.attribute_abilities.each do |action, attributes|
+          authorized_attributes.add(attributes) if @ability.can?(action, model)
         end
+        authorized_attributes
       end
     end
   end

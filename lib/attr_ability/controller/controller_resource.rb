@@ -4,7 +4,7 @@ module AttrAbility
   module Controller
     class ControllerResource < CanCan::ControllerResource
       def load_resource_instance
-        super.as(current_ability)
+        super.try(:as, current_ability)
       end
 
       protected

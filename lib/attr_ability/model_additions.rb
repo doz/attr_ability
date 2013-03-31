@@ -62,7 +62,7 @@ module AttrAbility
     end
 
     def as(ability)
-      AttrAbility::Model::InstanceProxy.new(self, self.class.build_sanitizer(ability))
+      AttrAbility::Model::InstanceProxy[self.class].new(self, self.class.build_sanitizer(ability))
     end
 
     def as_system
